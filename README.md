@@ -14,6 +14,7 @@ A lightweight integrated terminal for Obsidian, embedded directly in your worksp
 - Open a terminal panel inside Obsidian
 - Multiple terminal tabs with rename support
 - Theming that adapts to your Obsidian appearance
+- `.claude` dotfolder sidebar — browse and edit files from the `.claude` folder that Obsidian's native explorer hides, with auto-refresh on changes
 
 ## Installation
 
