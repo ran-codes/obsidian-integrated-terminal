@@ -72,6 +72,8 @@ export class TerminalView extends ItemView {
 	customName: string | null = null;
 	terminalNumber: number;
 	private resizeObserver: ResizeObserver | null = null;
+	private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
+	private _themeObserver: MutationObserver | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: TerminalPlugin) {
 		super(leaf);
@@ -114,12 +116,17 @@ export class TerminalView extends ItemView {
 		this.terminal.loadAddon(this.fitAddon);
 		this.terminal.open(terminalEl);
 
-		// Prevent Obsidian from intercepting terminal keyboard shortcuts
-		terminalEl.addEventListener("keydown", (e: KeyboardEvent) => {
+		// Capture terminal keyboard shortcuts at the document level
+		// (Obsidian binds globally, so we must intercept before it does)
+		this._keyHandler = (e: KeyboardEvent) => {
+			if (!this.terminal || !document.activeElement?.closest(".terminal-view-container")) return;
 			if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === "l") {
-				e.stopPropagation();
+				e.stopImmediatePropagation();
+				e.preventDefault();
+				this.terminal.clear();
 			}
-		}, true);
+		};
+		document.addEventListener("keydown", this._keyHandler, true);
 
 		// Fit after a brief delay to ensure the DOM is laid out
 		setTimeout(() => {
@@ -131,6 +138,17 @@ export class TerminalView extends ItemView {
 			this.fitAddon?.fit();
 		});
 		this.resizeObserver.observe(terminalEl);
+
+		// Watch for Obsidian theme changes (dark/light mode toggle)
+		this._themeObserver = new MutationObserver(() => {
+			if (this.terminal) {
+				this.terminal.options.theme = getObsidianTheme();
+			}
+		});
+		this._themeObserver.observe(document.body, {
+			attributes: true,
+			attributeFilter: ["class"],
+		});
 
 		// Spawn the shell via sidecar
 		this.spawnShell(settings);
@@ -300,8 +318,16 @@ export class TerminalView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		if (this._keyHandler) {
+			document.removeEventListener("keydown", this._keyHandler, true);
+			this._keyHandler = null;
+		}
+
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
+
+		this._themeObserver?.disconnect();
+		this._themeObserver = null;
 
 		if (this.ptyHost) {
 			try {
