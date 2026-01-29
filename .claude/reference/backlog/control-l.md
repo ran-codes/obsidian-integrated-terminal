@@ -1,4 +1,4 @@
-# Fix Ctrl+L Terminal Clearing
+# Fix Ctrl+L Terminal Clearing (NOT FIXED)
 
 ## Root Cause
 
@@ -14,13 +14,13 @@ Add a `\x0c` write to the PTY before calling `terminal.clear()`:
 
 ```typescript
 if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === "l") {
-    e.stopImmediatePropagation();
-    e.preventDefault();
-    // Send Ctrl+L to the shell so it clears through ConPTY properly
-    if (this.ptyHost?.connected) {
-        this.ptyHost.send({ type: "write", data: "\x0c" });
-    }
-    this.terminal.clear();
+	e.stopImmediatePropagation();
+	e.preventDefault();
+	// Send Ctrl+L to the shell so it clears through ConPTY properly
+	if (this.ptyHost?.connected) {
+		this.ptyHost.send({ type: "write", data: "\x0c" });
+	}
+	this.terminal.clear();
 }
 ```
 
