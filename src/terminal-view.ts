@@ -123,6 +123,10 @@ export class TerminalView extends ItemView {
 			if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === "l") {
 				e.stopImmediatePropagation();
 				e.preventDefault();
+				// Send Ctrl+L to the shell so it clears through ConPTY properly
+				if (this.ptyHost?.connected) {
+					this.ptyHost.send({ type: "write", data: "\x0c" });
+				}
 				this.terminal.clear();
 			}
 		};
@@ -270,7 +274,11 @@ export class TerminalView extends ItemView {
 		this.ptyHost = {
 			_proc: proc,
 			connected: true,
-			send: () => {},
+			send: (msg: any) => {
+				if (msg.type === "write" && proc.stdin) {
+					proc.stdin.write(msg.data);
+				}
+			},
 			kill: () => proc.kill(),
 		};
 
