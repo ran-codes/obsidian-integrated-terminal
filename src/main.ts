@@ -22,7 +22,7 @@ export default class TerminalPlugin extends Plugin {
 		this.registerView(VIEW_TYPE_TERMINAL, (leaf) => new TerminalView(leaf, this));
 
 		// Ribbon icon - opens a new terminal
-		this.addRibbonIcon("terminal", "Open Terminal", () => {
+		this.addRibbonIcon("square-terminal", "Integrated Terminal", () => {
 			this.openNewTerminal();
 		});
 
@@ -67,24 +67,7 @@ export default class TerminalPlugin extends Plugin {
 	}
 
 	toggleTerminal() {
-		const terminalLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TERMINAL);
-		const activeLeaf = this.app.workspace.activeLeaf;
-
-		if (activeLeaf && activeLeaf.view.getViewType() === VIEW_TYPE_TERMINAL) {
-			// Currently focused on a terminal -- switch back to last editor
-			if (this.lastActiveEditorLeaf) {
-				this.app.workspace.revealLeaf(this.lastActiveEditorLeaf);
-				this.lastActiveEditorLeaf.view?.containerEl
-					?.querySelector<HTMLElement>(".cm-editor")
-					?.focus();
-			}
-		} else if (terminalLeaves.length > 0) {
-			// Terminal exists but not focused -- focus the most recent one
-			this.app.workspace.revealLeaf(terminalLeaves[terminalLeaves.length - 1]);
-		} else {
-			// No terminal exists -- open one
-			this.openNewTerminal();
-		}
+		this.openNewTerminal();
 	}
 
 	async loadSettings() {

@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-vs-code-terminal",
+	"name": "obsidian-integrated-terminal",
 	"version": "0.1.0",
-	"description": "Lightweight integrated terminal for Obsidian, inspired by VS Code.",
+	"description": "Lightweight integrated terminal for Obsidian.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

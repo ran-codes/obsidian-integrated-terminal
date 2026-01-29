@@ -4,7 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import type TerminalPlugin from "./main";
 import type { TerminalPluginSettings } from "./settings";
 
-export const VIEW_TYPE_TERMINAL = "vs-code-terminal";
+export const VIEW_TYPE_TERMINAL = "integrated-terminal";
 
 let terminalCounter = 0;
 
@@ -68,13 +68,14 @@ export class TerminalView extends ItemView {
 	plugin: TerminalPlugin;
 	terminal: Terminal | null = null;
 	fitAddon: FitAddon | null = null;
-	ptyProcess: any = null;
+	ptyHost: any = null;
 	customName: string | null = null;
 	terminalNumber: number;
 	private resizeObserver: ResizeObserver | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: TerminalPlugin) {
 		super(leaf);
+		this.navigation = false;
 		this.plugin = plugin;
 		this.terminalNumber = ++terminalCounter;
 	}
@@ -113,6 +114,13 @@ export class TerminalView extends ItemView {
 		this.terminal.loadAddon(this.fitAddon);
 		this.terminal.open(terminalEl);
 
+		// Prevent Obsidian from intercepting terminal keyboard shortcuts
+		terminalEl.addEventListener("keydown", (e: KeyboardEvent) => {
+			if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key === "l") {
+				e.stopPropagation();
+			}
+		}, true);
+
 		// Fit after a brief delay to ensure the DOM is laid out
 		setTimeout(() => {
 			this.fitAddon?.fit();
@@ -124,51 +132,96 @@ export class TerminalView extends ItemView {
 		});
 		this.resizeObserver.observe(terminalEl);
 
-		// Spawn the shell
+		// Spawn the shell via sidecar
 		this.spawnShell(settings);
 	}
 
 	private spawnShell(settings: TerminalPluginSettings): void {
+		const path = require("path");
+		const { spawn } = require("child_process");
+
 		const vaultPath = (this.app.vault.adapter as any).getBasePath?.()
 			|| process.cwd();
 
+		// Resolve plugin directory to find pty-host.js
+		const pluginDir = path.join(vaultPath, this.plugin.manifest.dir);
+		const ptyHostPath = path.join(pluginDir, "pty-host.js");
+
 		try {
-			// Try node-pty first for full PTY support
-			const pty = require("node-pty");
-
-			const shell = settings.defaultShell;
-			const args = settings.defaultShellArgs;
-
-			this.ptyProcess = pty.spawn(shell, args, {
-				name: "xterm-256color",
+			// Spawn pty-host.js as a sidecar process using system Node.js
+			// stdio[3] = 'ipc' creates an IPC channel for process.send/on('message')
+			const child = spawn("node", [ptyHostPath], {
+				stdio: ["pipe", "pipe", "pipe", "ipc"],
 				cwd: vaultPath,
-				env: { ...process.env, TERM: "xterm-256color" },
-				cols: this.terminal?.cols || 80,
-				rows: this.terminal?.rows || 24,
+				windowsHide: true,
 			});
 
-			// PTY stdout -> xterm
-			this.ptyProcess.onData((data: string) => {
-				this.terminal?.write(data);
+			this.ptyHost = child;
+
+			// Handle IPC messages from pty-host
+			child.on("message", (msg: any) => {
+				switch (msg.type) {
+					case "ready":
+						// PTY host is ready -- spawn the shell
+						child.send({
+							type: "spawn",
+							shell: settings.defaultShell.includes(" ")
+								? settings.defaultShell
+								: settings.defaultShell + ".exe",
+							args: settings.defaultShellArgs,
+							cwd: vaultPath,
+							cols: this.terminal?.cols || 80,
+							rows: this.terminal?.rows || 24,
+						});
+						break;
+					case "data":
+						this.terminal?.write(msg.data);
+						break;
+					case "exit":
+						this.terminal?.write(
+							`\r\n\x1b[90m[Process exited with code ${msg.exitCode}]\x1b[0m\r\n`
+						);
+						break;
+					case "error":
+						this.terminal?.write(
+							`\r\n\x1b[31m[PTY error: ${msg.message}]\x1b[0m\r\n`
+						);
+						break;
+				}
 			});
 
-			// xterm input -> PTY stdin
+			// Forward xterm input to PTY host
 			this.terminal?.onData((data: string) => {
-				this.ptyProcess?.write(data);
+				if (this.ptyHost?.connected) {
+					child.send({ type: "write", data });
+				}
 			});
 
-			// Resize PTY when terminal resizes
+			// Forward resize events to PTY host
 			this.terminal?.onResize(({ cols, rows }: { cols: number; rows: number }) => {
-				this.ptyProcess?.resize(cols, rows);
+				if (this.ptyHost?.connected) {
+					child.send({ type: "resize", cols, rows });
+				}
 			});
 
-			// Handle PTY exit
-			this.ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
-				this.terminal?.write(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m\r\n`);
-				this.ptyProcess = null;
+			// Handle sidecar process errors/exit
+			child.on("error", (err: Error) => {
+				this.terminal?.write(
+					`\r\n\x1b[33m[PTY host failed: ${err.message}. Falling back to basic shell.]\x1b[0m\r\n`
+				);
+				this.ptyHost = null;
+				this.spawnFallback(settings, vaultPath);
+			});
+
+			child.on("exit", () => {
+				this.ptyHost = null;
+			});
+
+			// Capture any stderr from the sidecar for debugging
+			child.stderr?.on("data", (data: Buffer) => {
+				console.warn("[pty-host stderr]", data.toString());
 			});
 		} catch {
-			// Fallback: child_process.spawn with pipes
 			this.spawnFallback(settings, vaultPath);
 		}
 	}
@@ -179,7 +232,6 @@ export class TerminalView extends ItemView {
 		const shell = settings.defaultShell;
 		const args = [...settings.defaultShellArgs];
 
-		// Force interactive mode hints for common shells
 		if (shell === "powershell" || shell === "pwsh") {
 			if (!args.includes("-NoExit")) args.unshift("-NoExit");
 		} else if (shell.includes("bash") || shell === "zsh") {
@@ -197,10 +249,10 @@ export class TerminalView extends ItemView {
 			windowsHide: false,
 		});
 
-		this.ptyProcess = {
+		this.ptyHost = {
 			_proc: proc,
-			write: (data: string) => proc.stdin?.write(data),
-			resize: () => {},
+			connected: true,
+			send: () => {},
 			kill: () => proc.kill(),
 		};
 
@@ -217,8 +269,10 @@ export class TerminalView extends ItemView {
 		});
 
 		proc.on("exit", (code: number | null) => {
-			this.terminal?.write(`\r\n\x1b[90m[Process exited with code ${code ?? "unknown"}]\x1b[0m\r\n`);
-			this.ptyProcess = null;
+			this.terminal?.write(
+				`\r\n\x1b[90m[Process exited with code ${code ?? "unknown"}]\x1b[0m\r\n`
+			);
+			this.ptyHost = null;
 		});
 	}
 
@@ -249,14 +303,20 @@ export class TerminalView extends ItemView {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 
-		if (this.ptyProcess) {
+		if (this.ptyHost) {
 			try {
-				if (this.ptyProcess.kill) this.ptyProcess.kill();
-				if (this.ptyProcess._proc) this.ptyProcess._proc.kill();
+				if (this.ptyHost.connected) {
+					this.ptyHost.send({ type: "kill" });
+				} else if (this.ptyHost.kill) {
+					this.ptyHost.kill();
+				}
+				if (this.ptyHost._proc) {
+					this.ptyHost._proc.kill();
+				}
 			} catch {
 				// Process may already be dead
 			}
-			this.ptyProcess = null;
+			this.ptyHost = null;
 		}
 
 		if (this.terminal) {
