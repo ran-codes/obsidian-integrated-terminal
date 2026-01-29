@@ -1,9 +1,9 @@
 {
 	"id": "integrated-terminal",
 	"name": "Integrated Terminal",
-	"version": "0.1.0",
+	"version": "0.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Lightweight integrated terminal for Obsidian.",
-	"author": "rl627",
+	"author": "ran-li",
 	"isDesktopOnly": true
 }
