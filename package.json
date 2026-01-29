@@ -1,0 +1,25 @@
+{
+	"name": "obsidian-vs-code-terminal",
+	"version": "0.1.0",
+	"description": "Lightweight integrated terminal for Obsidian, inspired by VS Code.",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+	},
+	"keywords": [],
+	"author": "rl627",
+	"license": "MIT",
+	"dependencies": {
+		"obsidian": "latest"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"builtin-modules": "^4.0.0",
+		"esbuild": "~0.25.0",
+		"typescript": "~5.8.0",
+		"@xterm/xterm": "^5.5.0",
+		"@xterm/addon-fit": "^0.10.0",
+		"node-pty": "^1.0.0"
+	}
+}
