@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-integrated-terminal",
 	"version": "0.0.1",
-	"description": "Lightweight integrated terminal for Obsidian.",
+	"description": "Lightweight integrated terminal embedded directly in your workspace.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
