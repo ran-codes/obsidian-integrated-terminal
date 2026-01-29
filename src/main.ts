@@ -1,5 +1,6 @@
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { Plugin, WorkspaceLeaf, addIcon } from "obsidian";
 import { TerminalView, VIEW_TYPE_TERMINAL } from "./terminal-view";
+import { ClaudeFilesView, VIEW_TYPE_CLAUDE_FILES } from "./claude-files-view";
 import { TerminalSettingTab, TerminalPluginSettings, getDefaultSettings } from "./settings";
 
 export default class TerminalPlugin extends Plugin {
@@ -8,6 +9,9 @@ export default class TerminalPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+
+		// Register custom Claude icon (spark/asterisk shape)
+		addIcon("claude", `<circle cx="50" cy="50" r="7" fill="currentColor"/><g fill="currentColor"><rect x="46" y="8" width="8" height="28" rx="4"/><rect x="46" y="64" width="8" height="28" rx="4"/><rect x="46" y="8" width="8" height="28" rx="4" transform="rotate(60,50,50)"/><rect x="46" y="64" width="8" height="28" rx="4" transform="rotate(60,50,50)"/><rect x="46" y="8" width="8" height="28" rx="4" transform="rotate(120,50,50)"/><rect x="46" y="64" width="8" height="28" rx="4" transform="rotate(120,50,50)"/></g>`);
 
 		// Track last active editor leaf for toggle behavior
 		this.registerEvent(
@@ -45,6 +49,34 @@ export default class TerminalPlugin extends Plugin {
 			},
 		});
 
+		// Register the .claude files sidebar view
+		this.registerView(VIEW_TYPE_CLAUDE_FILES, (leaf) => new ClaudeFilesView(leaf, this));
+
+		// Ribbon icon for .claude files
+		this.addRibbonIcon("claude", "Show .claude files", () => {
+			this.showClaudeFilesView();
+		});
+
+		// Command: show .claude files
+		this.addCommand({
+			id: "show-claude-files",
+			name: "Show .claude files",
+			callback: () => {
+				this.showClaudeFilesView();
+			},
+		});
+
+		// Auto-open .claude view on startup if the folder exists
+		this.app.workspace.onLayoutReady(async () => {
+			const exists = await this.app.vault.adapter.exists(".claude");
+			if (exists) {
+				const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDE_FILES);
+				if (existing.length === 0) {
+					this.showClaudeFilesView();
+				}
+			}
+		});
+
 		// Settings tab
 		this.addSettingTab(new TerminalSettingTab(this.app, this));
 	}
@@ -54,6 +86,22 @@ export default class TerminalPlugin extends Plugin {
 		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TERMINAL);
 		for (const leaf of leaves) {
 			leaf.detach();
+		}
+	}
+
+	async showClaudeFilesView() {
+		const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDE_FILES);
+		if (existing.length > 0) {
+			this.app.workspace.revealLeaf(existing[0]);
+			return;
+		}
+		const leaf = this.app.workspace.getLeftLeaf(false);
+		if (leaf) {
+			await leaf.setViewState({
+				type: VIEW_TYPE_CLAUDE_FILES,
+				active: true,
+			});
+			this.app.workspace.revealLeaf(leaf);
 		}
 	}
 

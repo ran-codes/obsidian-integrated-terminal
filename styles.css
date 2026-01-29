@@ -196,3 +196,109 @@
 .terminal-view-container .xterm-screen {
 	height: 100%;
 }
+
+/* ==========================================================
+   .claude files sidebar tree
+   ========================================================== */
+
+.claude-files-container {
+	padding: 8px;
+	overflow-y: auto;
+	height: 100%;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.claude-tree-empty {
+	padding: 16px 8px;
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.claude-tree-folder {
+	margin: 0;
+	padding: 0;
+}
+
+.claude-tree-folder-summary {
+	display: flex;
+	align-items: center;
+	padding: 3px 4px;
+	cursor: pointer;
+	border-radius: var(--radius-s);
+	user-select: none;
+	list-style: none;
+	font-weight: 500;
+}
+
+.claude-tree-folder-summary::-webkit-details-marker {
+	display: none;
+}
+
+.claude-tree-folder-summary:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.claude-tree-folder-icon {
+	margin-right: 4px;
+	font-size: 1em;
+}
+
+.claude-tree-file {
+	display: flex;
+	align-items: center;
+	padding: 3px 4px;
+	cursor: pointer;
+	border-radius: var(--radius-s);
+	user-select: none;
+}
+
+.claude-tree-file:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.claude-tree-file-icon {
+	margin-right: 4px;
+	font-size: 1em;
+}
+
+.claude-tree-file-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Reader view for non-indexed files */
+
+.claude-file-reader {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 0;
+}
+
+.claude-file-reader-header {
+	padding: 8px 12px;
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.claude-file-reader-path {
+	font-family: var(--font-monospace);
+}
+
+.claude-file-reader-content {
+	flex: 1;
+	width: 100%;
+	padding: 12px;
+	border: none;
+	resize: none;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+	line-height: 1.5;
+	outline: none;
+}
