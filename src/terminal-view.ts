@@ -1,10 +1,29 @@
-import { ItemView, Modal, WorkspaceLeaf, Menu, App } from "obsidian";
+import { ItemView, Modal, WorkspaceLeaf, Menu, App, FileSystemAdapter } from "obsidian";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import * as path from "path";
+import { spawn, ChildProcess } from "child_process";
 import type TerminalPlugin from "./main";
 import type { TerminalPluginSettings } from "./settings";
 
 export const VIEW_TYPE_TERMINAL = "integrated-terminal";
+
+type PtyMessage =
+	| { type: "ready" }
+	| { type: "data"; data: string }
+	| { type: "exit"; exitCode: number }
+	| { type: "error"; message: string }
+	| { type: "spawn"; shell: string; args: string[]; cwd: string; cols: number; rows: number }
+	| { type: "write"; data: string }
+	| { type: "resize"; cols: number; rows: number }
+	| { type: "kill" };
+
+interface PtyHost {
+	connected: boolean;
+	send(msg: PtyMessage): void;
+	kill?(): void;
+	_proc?: ChildProcess;
+}
 
 let terminalCounter = 0;
 
@@ -26,8 +45,7 @@ class RenameModal extends Modal {
 			type: "text",
 			value: this.currentName,
 		});
-		input.style.width = "100%";
-		input.style.marginBottom = "1em";
+		input.addClass("rename-modal-input");
 		input.focus();
 		input.select();
 
@@ -68,7 +86,7 @@ export class TerminalView extends ItemView {
 	plugin: TerminalPlugin;
 	terminal: Terminal | null = null;
 	fitAddon: FitAddon | null = null;
-	ptyHost: any = null;
+	ptyHost: PtyHost | null = null;
 	customName: string | null = null;
 	terminalNumber: number;
 	private resizeObserver: ResizeObserver | null = null;
@@ -94,7 +112,7 @@ export class TerminalView extends ItemView {
 		return "terminal";
 	}
 
-	async onOpen(): Promise<void> {
+	onOpen(): Promise<void> {
 		const container = this.contentEl;
 		container.empty();
 		container.addClass("terminal-view-container");
@@ -156,17 +174,16 @@ export class TerminalView extends ItemView {
 
 		// Spawn the shell via sidecar
 		this.spawnShell(settings);
+
+		return Promise.resolve();
 	}
 
 	private spawnShell(settings: TerminalPluginSettings): void {
-		const path = require("path");
-		const { spawn } = require("child_process");
-
-		const vaultPath = (this.app.vault.adapter as any).getBasePath?.()
+		const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath?.()
 			|| process.cwd();
 
 		// Resolve plugin directory to find pty-host.js
-		const pluginDir = path.join(vaultPath, this.plugin.manifest.dir);
+		const pluginDir = path.join(vaultPath, this.plugin.manifest.dir!);
 		const ptyHostPath = path.join(pluginDir, "pty-host.js");
 
 		try {
@@ -178,10 +195,10 @@ export class TerminalView extends ItemView {
 				windowsHide: true,
 			});
 
-			this.ptyHost = child;
+			this.ptyHost = child as unknown as PtyHost;
 
 			// Handle IPC messages from pty-host
-			child.on("message", (msg: any) => {
+			child.on("message", (msg: PtyMessage) => {
 				switch (msg.type) {
 					case "ready":
 						// PTY host is ready -- spawn the shell
@@ -249,8 +266,6 @@ export class TerminalView extends ItemView {
 	}
 
 	private spawnFallback(settings: TerminalPluginSettings, cwd: string): void {
-		const { spawn } = require("child_process");
-
 		const shell = settings.defaultShell;
 		const args = [...settings.defaultShellArgs];
 
@@ -274,12 +289,12 @@ export class TerminalView extends ItemView {
 		this.ptyHost = {
 			_proc: proc,
 			connected: true,
-			send: (msg: any) => {
+			send: (msg: PtyMessage) => {
 				if (msg.type === "write" && proc.stdin) {
 					proc.stdin.write(msg.data);
 				}
 			},
-			kill: () => proc.kill(),
+			kill: () => { proc.kill(); },
 		};
 
 		proc.stdout?.on("data", (data: Buffer) => {
@@ -316,7 +331,7 @@ export class TerminalView extends ItemView {
 						this.getDisplayText(),
 						(name: string) => {
 							this.customName = name || null;
-							(this.leaf as any).updateHeader?.();
+							(this.leaf as WorkspaceLeaf & { updateHeader?: () => void }).updateHeader?.();
 						}
 					).open();
 				});
@@ -325,7 +340,7 @@ export class TerminalView extends ItemView {
 		super.onPaneMenu(menu, "more-options");
 	}
 
-	async onClose(): Promise<void> {
+	onClose(): Promise<void> {
 		if (this._keyHandler) {
 			document.removeEventListener("keydown", this._keyHandler, true);
 			this._keyHandler = null;
@@ -359,5 +374,7 @@ export class TerminalView extends ItemView {
 		}
 
 		this.fitAddon = null;
+
+		return Promise.resolve();
 	}
 }

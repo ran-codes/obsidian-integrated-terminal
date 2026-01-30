@@ -1,4 +1,6 @@
-import { ItemView, WorkspaceLeaf, Menu, TAbstractFile } from "obsidian";
+import { ItemView, WorkspaceLeaf, Menu, TAbstractFile, TFile, FileSystemAdapter } from "obsidian";
+import * as path from "path";
+import { shell } from "electron";
 import type TerminalPlugin from "./main";
 
 export const VIEW_TYPE_CLAUDE_FILES = "claude-files";
@@ -43,7 +45,7 @@ export class ClaudeFilesView extends ItemView {
 		// Auto-refresh when files change inside .claude
 		const refresh = (file: TAbstractFile) => {
 			if (file.path.startsWith(".claude")) {
-				this.renderTree();
+				void this.renderTree();
 			}
 		};
 
@@ -130,7 +132,7 @@ export class ClaudeFilesView extends ItemView {
 				menu.addItem((item) => {
 					item.setTitle("Refresh")
 						.setIcon("refresh-cw")
-						.onClick(() => this.renderTree());
+						.onClick(() => { void this.renderTree(); });
 				});
 				menu.showAtMouseEvent(e);
 			});
@@ -147,7 +149,7 @@ export class ClaudeFilesView extends ItemView {
 			fileRow.createSpan({ text: node.name, cls: "claude-tree-file-name" });
 
 			// Click to open
-			fileRow.addEventListener("click", () => this.openFile(node.path));
+			fileRow.addEventListener("click", () => { void this.openFile(node.path); });
 
 			// Context menu on file
 			fileRow.addEventListener("contextmenu", (e: MouseEvent) => {
@@ -156,7 +158,7 @@ export class ClaudeFilesView extends ItemView {
 				menu.addItem((item) => {
 					item.setTitle("Open")
 						.setIcon("file-text")
-						.onClick(() => this.openFile(node.path));
+						.onClick(() => { void this.openFile(node.path); });
 				});
 				menu.addItem((item) => {
 					item.setTitle("Reveal in system explorer")
@@ -166,7 +168,7 @@ export class ClaudeFilesView extends ItemView {
 				menu.addItem((item) => {
 					item.setTitle("Refresh")
 						.setIcon("refresh-cw")
-						.onClick(() => this.renderTree());
+						.onClick(() => { void this.renderTree(); });
 				});
 				menu.showAtMouseEvent(e);
 			});
@@ -195,7 +197,7 @@ export class ClaudeFilesView extends ItemView {
 			if (abstractFile) {
 				// Obsidian knows about this file — open via workspace
 				const leaf = this.app.workspace.getLeaf("tab");
-				await leaf.openFile(abstractFile as any);
+				await leaf.openFile(abstractFile as TFile);
 				return;
 			}
 
@@ -208,9 +210,9 @@ export class ClaudeFilesView extends ItemView {
 			// so Obsidian can open it. Since .claude is a dotfolder, we open via
 			// adapter read and display in a plain container.
 			await leaf.setViewState({ type: "empty", active: true });
-			this.app.workspace.revealLeaf(leaf);
+			void this.app.workspace.revealLeaf(leaf);
 
-			const viewContainer = (leaf.view as any).contentEl as HTMLElement;
+			const viewContainer = (leaf.view as ItemView).contentEl as HTMLElement;
 			viewContainer.empty();
 			viewContainer.addClass("claude-file-reader");
 
@@ -225,10 +227,10 @@ export class ClaudeFilesView extends ItemView {
 			textarea.spellcheck = false;
 
 			// Save on Ctrl+S
-			textarea.addEventListener("keydown", async (e: KeyboardEvent) => {
+			textarea.addEventListener("keydown", (e: KeyboardEvent) => {
 				if ((e.ctrlKey || e.metaKey) && e.key === "s") {
 					e.preventDefault();
-					await adapter.write(filePath, textarea.value);
+					void adapter.write(filePath, textarea.value);
 				}
 			});
 		} catch (err) {
@@ -238,18 +240,17 @@ export class ClaudeFilesView extends ItemView {
 
 	private revealInExplorer(filePath: string): void {
 		try {
-			const path = require("path");
-			const adapter = this.app.vault.adapter as any;
+			const adapter = this.app.vault.adapter as FileSystemAdapter;
 			const basePath = adapter.getBasePath?.() || process.cwd();
 			const fullPath = path.join(basePath, filePath);
-			const { shell } = require("electron");
 			shell.showItemInFolder(fullPath);
 		} catch (err) {
 			console.error("Failed to reveal in explorer:", err);
 		}
 	}
 
-	async onClose(): Promise<void> {
+	onClose(): Promise<void> {
 		this.containerEl_ = null;
+		return Promise.resolve();
 	}
 }

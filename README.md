@@ -2,12 +2,38 @@
 
 A lightweight integrated terminal for Obsidian, embedded directly in your workspace.
 
-> **Note:** This plugin currently only works with PowerShell and assumes you have PowerShell installed. Shell selection is coming soon.
-
 ## Usage
 
-- Press `Ctrl + `` ` to toggle the terminal (same as VS Code)
+- Use the command palette to run **Integrated Terminal: Toggle terminal** or **Open new terminal**
 - Click the terminal icon in the ribbon (left sidebar)
+
+## Recommended setup
+
+For a VS Code-like experience, add these keybindings in **Settings > Hotkeys**:
+
+| Command | Hotkey |
+|---------|--------|
+| Integrated Terminal: Toggle terminal | `Ctrl + `` ` |
+
+To free up `Ctrl+P` for the command palette (like VS Code), add this to your
+`.obsidian/hotkeys.json`:
+
+```json
+{
+  "command-palette:open": [
+    {
+      "modifiers": ["Mod", "Shift"],
+      "key": "P"
+    }
+  ],
+  "switcher:open": [
+    {
+      "modifiers": ["Mod"],
+      "key": "P"
+    }
+  ]
+}
+```
 
 ## Features
 

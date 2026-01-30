@@ -64,7 +64,7 @@ export class TerminalSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		// Shell selection
-		const platformPresets = SHELL_PRESETS.filter(p => p.platform.includes(process.platform as NodeJS.Platform));
+		const platformPresets = SHELL_PRESETS.filter(p => p.platform.includes(process.platform));
 
 		new Setting(containerEl)
 			.setName("Shell")
@@ -81,9 +81,9 @@ export class TerminalSettingTab extends PluginSettingTab {
 				dropdown.onChange(async (value) => {
 					if (value === "custom") {
 						// Show the custom input, don't change shell yet
-						customShellSetting.settingEl.style.display = "";
+						customShellSetting.settingEl.toggleClass("is-hidden", false);
 					} else {
-						customShellSetting.settingEl.style.display = "none";
+						customShellSetting.settingEl.toggleClass("is-hidden", true);
 						this.plugin.settings.defaultShell = value;
 						// Apply preset args
 						const preset = platformPresets.find(p => p.executable === value);
@@ -114,7 +114,7 @@ export class TerminalSettingTab extends PluginSettingTab {
 
 		// Hide custom input by default if a preset is selected
 		const isCustom = !platformPresets.some(p => p.executable === this.plugin.settings.defaultShell);
-		customShellSetting.settingEl.style.display = isCustom ? "" : "none";
+		customShellSetting.settingEl.toggleClass("is-hidden", !isCustom);
 
 		// Shell arguments
 		new Setting(containerEl)

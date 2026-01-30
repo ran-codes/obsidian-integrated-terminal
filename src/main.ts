@@ -26,8 +26,8 @@ export default class TerminalPlugin extends Plugin {
 		this.registerView(VIEW_TYPE_TERMINAL, (leaf) => new TerminalView(leaf, this));
 
 		// Ribbon icon - opens a new terminal
-		this.addRibbonIcon("square-terminal", "Integrated Terminal", () => {
-			this.openNewTerminal();
+		this.addRibbonIcon("square-terminal", "Integrated terminal", () => {
+			void this.openNewTerminal();
 		});
 
 		// Command: open new terminal
@@ -35,7 +35,7 @@ export default class TerminalPlugin extends Plugin {
 			id: "open-terminal",
 			name: "Open new terminal",
 			callback: () => {
-				this.openNewTerminal();
+				void this.openNewTerminal();
 			},
 		});
 
@@ -43,7 +43,6 @@ export default class TerminalPlugin extends Plugin {
 		this.addCommand({
 			id: "toggle-terminal",
 			name: "Toggle terminal",
-			hotkeys: [{ modifiers: ["Ctrl"], key: "`" }],
 			callback: () => {
 				this.toggleTerminal();
 			},
@@ -54,7 +53,7 @@ export default class TerminalPlugin extends Plugin {
 
 		// Ribbon icon for .claude files
 		this.addRibbonIcon("claude", "Show .claude files", () => {
-			this.showClaudeFilesView();
+			void this.showClaudeFilesView();
 		});
 
 		// Command: show .claude files
@@ -62,7 +61,7 @@ export default class TerminalPlugin extends Plugin {
 			id: "show-claude-files",
 			name: "Show .claude files",
 			callback: () => {
-				this.showClaudeFilesView();
+				void this.showClaudeFilesView();
 			},
 		});
 
@@ -72,7 +71,7 @@ export default class TerminalPlugin extends Plugin {
 			if (exists) {
 				const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDE_FILES);
 				if (existing.length === 0) {
-					this.showClaudeFilesView();
+					void this.showClaudeFilesView();
 				}
 			}
 		});
@@ -81,7 +80,7 @@ export default class TerminalPlugin extends Plugin {
 		this.addSettingTab(new TerminalSettingTab(this.app, this));
 	}
 
-	async onunload() {
+	onunload(): void {
 		// Close all terminal views (triggers onClose which kills PTY processes)
 		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TERMINAL);
 		for (const leaf of leaves) {
@@ -92,7 +91,7 @@ export default class TerminalPlugin extends Plugin {
 	async showClaudeFilesView() {
 		const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_CLAUDE_FILES);
 		if (existing.length > 0) {
-			this.app.workspace.revealLeaf(existing[0]);
+			void this.app.workspace.revealLeaf(existing[0]);
 			return;
 		}
 		const leaf = this.app.workspace.getLeftLeaf(false);
@@ -101,7 +100,7 @@ export default class TerminalPlugin extends Plugin {
 				type: VIEW_TYPE_CLAUDE_FILES,
 				active: true,
 			});
-			this.app.workspace.revealLeaf(leaf);
+			void this.app.workspace.revealLeaf(leaf);
 		}
 	}
 
@@ -111,11 +110,11 @@ export default class TerminalPlugin extends Plugin {
 			type: VIEW_TYPE_TERMINAL,
 			active: true,
 		});
-		this.app.workspace.revealLeaf(leaf);
+		void this.app.workspace.revealLeaf(leaf);
 	}
 
 	toggleTerminal() {
-		this.openNewTerminal();
+		void this.openNewTerminal();
 	}
 
 	async loadSettings() {
