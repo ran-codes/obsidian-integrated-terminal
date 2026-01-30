@@ -3,7 +3,7 @@
 	"name": "Integrated Terminal",
 	"version": "0.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "Lightweight integrated terminal for obsidian.",
+	"description": "Lightweight integrated terminal embedded directly in your workspace.",
 	"author": "ran-li",
 	"isDesktopOnly": true
 }
