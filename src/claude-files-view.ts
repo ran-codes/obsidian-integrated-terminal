@@ -194,10 +194,10 @@ export class ClaudeFilesView extends ItemView {
 
 			// Check if the file is already indexed by Obsidian
 			const abstractFile = this.app.vault.getAbstractFileByPath(filePath);
-			if (abstractFile) {
+			if (abstractFile instanceof TFile) {
 				// Obsidian knows about this file — open via workspace
 				const leaf = this.app.workspace.getLeaf("tab");
-				await leaf.openFile(abstractFile as TFile);
+				await leaf.openFile(abstractFile);
 				return;
 			}
 
@@ -212,7 +212,7 @@ export class ClaudeFilesView extends ItemView {
 			await leaf.setViewState({ type: "empty", active: true });
 			void this.app.workspace.revealLeaf(leaf);
 
-			const viewContainer = (leaf.view as ItemView).contentEl as HTMLElement;
+			const viewContainer = (leaf.view as ItemView).contentEl;
 			viewContainer.empty();
 			viewContainer.addClass("claude-file-reader");
 

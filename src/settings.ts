@@ -148,7 +148,7 @@ export class TerminalSettingTab extends PluginSettingTab {
 			.setName("Font family")
 			.setDesc("Terminal font family (CSS value).")
 			.addText(text => {
-				text.setPlaceholder("monospace")
+				text.setPlaceholder("Monospace")
 					.setValue(this.plugin.settings.fontFamily)
 					.onChange(async (value) => {
 						this.plugin.settings.fontFamily = value || "monospace";
