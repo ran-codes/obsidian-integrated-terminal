@@ -48,6 +48,15 @@ export default class TerminalPlugin extends Plugin {
 			},
 		});
 
+		// Command: open Claude Code terminal
+		this.addCommand({
+			id: "open-claude-terminal",
+			name: "Open Claude Code terminal",
+			callback: () => {
+				void this.openClaudeTerminal();
+			},
+		});
+
 		// Register the .claude files sidebar view
 		this.registerView(VIEW_TYPE_CLAUDE_FILES, (leaf) => new ClaudeFilesView(leaf, this));
 
@@ -110,6 +119,17 @@ export default class TerminalPlugin extends Plugin {
 			type: VIEW_TYPE_TERMINAL,
 			active: true,
 		});
+		void this.app.workspace.revealLeaf(leaf);
+	}
+
+	async openClaudeTerminal() {
+		const leaf = this.app.workspace.getLeaf("tab");
+		await leaf.setViewState({
+			type: VIEW_TYPE_TERMINAL,
+			active: true,
+		});
+		const view = leaf.view as TerminalView;
+		view.initialCommand = "claude";
 		void this.app.workspace.revealLeaf(leaf);
 	}
 

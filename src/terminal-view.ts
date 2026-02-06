@@ -88,10 +88,12 @@ export class TerminalView extends ItemView {
 	fitAddon: FitAddon | null = null;
 	ptyHost: PtyHost | null = null;
 	customName: string | null = null;
+	initialCommand: string | null = null;
 	terminalNumber: number;
 	private resizeObserver: ResizeObserver | null = null;
 	private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
 	private _themeObserver: MutationObserver | null = null;
+	private _initialCommandSent = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: TerminalPlugin) {
 		super(leaf);
@@ -178,6 +180,17 @@ export class TerminalView extends ItemView {
 		return Promise.resolve();
 	}
 
+	private sendInitialCommand(): void {
+		if (!this.initialCommand || this._initialCommandSent) return;
+		this._initialCommandSent = true;
+		const cmd = this.initialCommand;
+		setTimeout(() => {
+			if (this.ptyHost?.connected) {
+				this.ptyHost.send({ type: "write", data: cmd + "\r" });
+			}
+		}, 300);
+	}
+
 	private spawnShell(settings: TerminalPluginSettings): void {
 		const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath?.()
 			|| process.cwd();
@@ -215,6 +228,7 @@ export class TerminalView extends ItemView {
 						break;
 					case "data":
 						this.terminal?.write(msg.data);
+						this.sendInitialCommand();
 						break;
 					case "exit":
 						this.terminal?.write(
@@ -299,6 +313,7 @@ export class TerminalView extends ItemView {
 
 		proc.stdout?.on("data", (data: Buffer) => {
 			this.terminal?.write(data.toString());
+			this.sendInitialCommand();
 		});
 
 		proc.stderr?.on("data", (data: Buffer) => {
