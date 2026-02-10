@@ -130,6 +130,8 @@ export default class TerminalPlugin extends Plugin {
 		});
 		const view = leaf.view as TerminalView;
 		view.initialCommand = "claude";
+		view.markAsAssistant();
+		(leaf as WorkspaceLeaf & { updateHeader?: () => void }).updateHeader?.();
 		void this.app.workspace.revealLeaf(leaf);
 	}
 

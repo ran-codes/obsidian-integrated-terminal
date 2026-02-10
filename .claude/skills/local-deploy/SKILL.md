@@ -26,7 +26,12 @@ Run these steps in order. **Stop immediately if any step fails.**
    rm -rf "D:/GitHub/work/.obsidian/plugins/integrated-terminal/node_modules/node-pty" && cp -r D:/GitHub/obsidian-vs-code-terminal/node_modules/node-pty "D:/GitHub/work/.obsidian/plugins/integrated-terminal/node_modules/"
    ```
 
-4. **Verify deployment** -- confirm all files landed correctly:
+4. **Copy plugin reference doc** so the agent there has context on the plugin:
+   ```bash
+   cp D:/GitHub/obsidian-vs-code-terminal/plugin-reference.md "D:/GitHub/work/.obsidian/plugins/integrated-terminal/CLAUDE.md"
+   ```
+
+5. **Verify deployment** -- confirm all files landed correctly:
    ```bash
    ls -la "D:/GitHub/work/.obsidian/plugins/integrated-terminal/" && echo "---" && ls "D:/GitHub/work/.obsidian/plugins/integrated-terminal/node_modules/node-pty/prebuilds/win32-x64/" 2>&1
    ```

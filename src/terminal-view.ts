@@ -26,6 +26,7 @@ interface PtyHost {
 }
 
 let terminalCounter = 0;
+let assistantCounter = 0;
 
 class RenameModal extends Modal {
 	currentName: string;
@@ -89,7 +90,9 @@ export class TerminalView extends ItemView {
 	ptyHost: PtyHost | null = null;
 	customName: string | null = null;
 	initialCommand: string | null = null;
+	isAssistant = false;
 	terminalNumber: number;
+	assistantNumber = 0;
 	private resizeObserver: ResizeObserver | null = null;
 	private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
 	private _themeObserver: MutationObserver | null = null;
@@ -99,7 +102,7 @@ export class TerminalView extends ItemView {
 		super(leaf);
 		this.navigation = false;
 		this.plugin = plugin;
-		this.terminalNumber = ++terminalCounter;
+		this.terminalNumber = 0;
 	}
 
 	getViewType(): string {
@@ -107,11 +110,23 @@ export class TerminalView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return this.customName || `Terminal ${this.terminalNumber}`;
+		if (this.customName) return this.customName;
+		if (this.isAssistant) {
+			return this.assistantNumber === 1 ? "Assistant" : `Assistant ${this.assistantNumber}`;
+		}
+		if (this.terminalNumber === 0) {
+			this.terminalNumber = ++terminalCounter;
+		}
+		return `Terminal ${this.terminalNumber}`;
+	}
+
+	markAsAssistant(): void {
+		this.isAssistant = true;
+		this.assistantNumber = ++assistantCounter;
 	}
 
 	getIcon(): string {
-		return "terminal";
+		return this.isAssistant ? "claude" : "terminal";
 	}
 
 	onOpen(): Promise<void> {
