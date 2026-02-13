@@ -1,7 +1,8 @@
-import { Plugin, WorkspaceLeaf, addIcon } from "obsidian";
+import { Plugin, WorkspaceLeaf, addIcon, Notice, FileSystemAdapter } from "obsidian";
 import { TerminalView, VIEW_TYPE_TERMINAL } from "./terminal-view";
 import { ClaudeFilesView, VIEW_TYPE_CLAUDE_FILES } from "./claude-files-view";
 import { TerminalSettingTab, TerminalPluginSettings, getDefaultSettings } from "./settings";
+import { exec } from "child_process";
 
 export default class TerminalPlugin extends Plugin {
 	settings: TerminalPluginSettings = getDefaultSettings();
@@ -54,6 +55,15 @@ export default class TerminalPlugin extends Plugin {
 			name: "Open Claude Code terminal",
 			callback: () => {
 				void this.openClaudeTerminal();
+			},
+		});
+
+		// Command: open external terminal at vault root
+		this.addCommand({
+			id: "open-external-terminal",
+			name: "Open external terminal",
+			callback: () => {
+				this.openExternalTerminal();
 			},
 		});
 
@@ -137,6 +147,35 @@ export default class TerminalPlugin extends Plugin {
 
 	toggleTerminal() {
 		void this.openNewTerminal();
+	}
+
+	openExternalTerminal() {
+		const adapter = this.app.vault.adapter as FileSystemAdapter;
+		const vaultPath = adapter.getBasePath?.() || process.cwd();
+		const platform = process.platform;
+
+		let command: string;
+
+		if (platform === "win32") {
+			// Prefer Windows Terminal (wt.exe), fall back to cmd.exe
+			command = `start "" wt.exe -d "${vaultPath}" || start "" cmd.exe /k "cd /d ${vaultPath}"`;
+		} else if (platform === "darwin") {
+			command = `open -a Terminal "${vaultPath}"`;
+		} else {
+			// Linux: try common terminal emulators in order of preference
+			command = [
+				`x-terminal-emulator --working-directory="${vaultPath}"`,
+				`gnome-terminal --working-directory="${vaultPath}"`,
+				`konsole --workdir "${vaultPath}"`,
+				`xterm -e "cd '${vaultPath}' && $SHELL"`,
+			].join(" || ");
+		}
+
+		exec(command, { cwd: vaultPath }, (error) => {
+			if (error) {
+				new Notice(`Failed to open external terminal: ${error.message}`);
+			}
+		});
 	}
 
 	async loadSettings() {
